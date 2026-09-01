@@ -1,0 +1,15 @@
+# Ambiente virtual
+.venv/
+venv/
+
+# Cache e arquivos compilados do Python
+__pycache__/
+*.py[cod]
+
+# Notas locais criadas pelo usuário
+notes/
+
+# Arquivos do sistema e do editor
+.DS_Store
+Thumbs.db
+.vscode/
