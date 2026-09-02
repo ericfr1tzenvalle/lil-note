@@ -15,6 +15,7 @@ def toggle_theme():
     dark_mode = not dark_mode
     app.setStyleSheet(DARK_THEME if dark_mode else LIGHT_THEME)
     window.note.top_bar.theme_button.setText("☼" if dark_mode else "☾")
+    window.status_bar.set_theme(dark_mode)
 
 
 window.note.top_bar.theme_button.clicked.connect(toggle_theme)

@@ -3,6 +3,8 @@ from ui.note_pad import NotePad
 from PySide6.QtGui import QAction
 from pathlib import Path
 
+from ui.status_bar import StatusBar
+
 PATH = Path(__file__).resolve().parent.parent
 DIR = PATH / 'notes'
 
@@ -16,6 +18,15 @@ class MainWindow(QMainWindow):
         self.setCentralWidget(self.note)
         self.current_file = None
         DIR.mkdir(parents=True, exist_ok=True)
+
+        self.last_content = self.get_note_content()
+        self.note.note_pad.textChanged.connect(self.on_content_changed)
+       
+        self.statusBar().setContentsMargins(0, 0, 0, 0)
+        self.statusBar().layout().setContentsMargins(0, 0, 0, 0)
+
+        self.status_bar = StatusBar(self.current_file)
+        self.statusBar().addWidget(self.status_bar)
 
         # actions/hotkeys   
         self.new_note_action = QAction("New Note", self)
@@ -37,6 +48,13 @@ class MainWindow(QMainWindow):
 
         self.addActions([self.new_note_action, self.open_note_action, self.save_note_action, self.save_as_note_action, self.help_action])
 
+    def on_content_changed(self):
+        content_now = self.get_note_content()
+        is_modified = content_now != self.last_content
+        filename = self.current_file.stem if self.current_file else 'untitled.txt'
+        status = '●' if is_modified else ''
+
+        self.status_bar.filename_label.setText(f'{status} {filename}')
 
     def get_note_content(self):
         return self.note.note_pad.toPlainText()
@@ -44,6 +62,11 @@ class MainWindow(QMainWindow):
     def set_current_file(self, file_path):
         self.current_file = Path(file_path)
         self.setWindowTitle(f"lilnote - {self.current_file.stem}")
+        self.status_bar.set_file(self.current_file)
+
+    def mark_as_saved(self):
+        self.last_content = self.get_note_content()
+        self.on_content_changed()
 
     def save_to_file(self, file_path):
         try:
@@ -53,29 +76,58 @@ class MainWindow(QMainWindow):
             return False
 
         self.set_current_file(file_path)
+        self.mark_as_saved()
         return True
 
     def new_file(self):
-        message = QMessageBox.question(self, "New Note", "Are you sure you want to create a new note? Unsaved changes will be lost.", QMessageBox.Yes | QMessageBox.No)
-        if message == QMessageBox.Yes:
-            self.note.note_pad.clear()
-            self.current_file = None
-            self.setWindowTitle("lilnote")
+        if not self.confirm_save_changes("creating a new note"):
+            return
 
+        self.note.note_pad.clear()
+        self.current_file = None
+        self.setWindowTitle("lilnote - untitled.txt")
+        self.status_bar.set_file()
+        self.mark_as_saved()
+
+    def has_unsaved_changes(self):
+        return self.get_note_content() != self.last_content
+
+    def confirm_save_changes(self, action):
+        if not self.has_unsaved_changes():
+            return True
+
+        message = QMessageBox.warning(
+            self,
+            "Unsaved Changes",
+            f"Do you want to save your changes before {action}?",
+            QMessageBox.Save | QMessageBox.Discard | QMessageBox.Cancel,
+            QMessageBox.Save,
+        )
+
+        if message == QMessageBox.Save:
+            return self.save_file()
+
+        return message == QMessageBox.Discard
+    
     def save_file(self):
         content = self.get_note_content()
         if not content.strip():
             QMessageBox.warning(self, "Empty Note", "Cannot save an empty note.")
-            return
+            return False
 
         if self.current_file is None:
-            self.save_file_as()
-            return
+            return self.save_file_as()
 
         if self.save_to_file(self.current_file):
             QMessageBox.information(self, "Note Saved", f"Note saved to {self.current_file}")
+            return True
+
+        return False
 
     def open_file(self):
+        if not self.confirm_save_changes("opening another note"):
+            return
+
         file_path, _ = QFileDialog.getOpenFileName(self, "Open Note", str(DIR), "Text Files (*.txt);;All Files (*)")
         if not file_path:
             return
@@ -88,26 +140,29 @@ class MainWindow(QMainWindow):
 
         self.note.note_pad.setPlainText(content)
         self.set_current_file(file_path)
+        self.mark_as_saved()
 
     def save_file_as(self):
         content = self.get_note_content()
         if not content.strip():
             QMessageBox.warning(self, "Empty Note", "Cannot save an empty note.")
-            return
+            return False
 
         default_path = str(DIR / "untitled.txt")
         file_path, _ = QFileDialog.getSaveFileName(self, "Save Note As", default_path, "Text Files (*.txt);;All Files (*)")
         if not file_path:
-            return
+            return False
 
         path = Path(file_path)
 
         if self.save_to_file(path):
             QMessageBox.information(self, "Note Saved", f"Note saved to {path}")
+            return True
+
+        return False
 
     def closeEvent(self, event):
-        message = QMessageBox.question(self, "Quit", "Are you sure you want to quit? Unsaved changes will be lost.", QMessageBox.Yes | QMessageBox.No)
-        if message == QMessageBox.Yes:
+        if self.confirm_save_changes("quitting"):
             event.accept()
         else:
             event.ignore()
@@ -126,4 +181,3 @@ class MainWindow(QMainWindow):
         QMessageBox.information(self, "Help", help_text)
 
     
-
