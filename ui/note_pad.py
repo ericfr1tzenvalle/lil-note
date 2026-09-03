@@ -7,7 +7,7 @@ class NotePad(QWidget):
         self.main_layout = QVBoxLayout(self)
         self.note_pad = QPlainTextEdit()
         self.top_bar = TopBar()
-        self.main_layout.setContentsMargins(8, 3, 8, 3)
+        self.main_layout.setContentsMargins(8, 3, 8, 10)
         self.main_layout.addWidget(self.top_bar)
         self.main_layout.addWidget(self.note_pad)
 

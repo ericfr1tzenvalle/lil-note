@@ -1,3 +1,5 @@
+import sys
+
 from PySide6.QtWidgets import QFileDialog, QMainWindow, QMessageBox
 from ui.note_pad import NotePad
 from PySide6.QtGui import QAction
@@ -13,7 +15,7 @@ class MainWindow(QMainWindow):
     def __init__(self):
         super().__init__()
         self.setWindowTitle("lilnote")
-        self.resize(600, 400)
+        self.resize(800, 600)
         self.note = NotePad()
         self.setCentralWidget(self.note)
         self.current_file = None
@@ -43,7 +45,8 @@ class MainWindow(QMainWindow):
         self.save_note_action.triggered.connect(self.save_file)
         self.save_as_note_action.setShortcut("Ctrl+Shift+S")
         self.save_as_note_action.triggered.connect(self.save_file_as)
-        self.help_action.setShortcut("Ctrl+H")
+        self.help_shortcut = "Ctrl+Shift+H" if sys.platform == "darwin" else "Ctrl+H"
+        self.help_action.setShortcut(self.help_shortcut)
         self.help_action.triggered.connect(self.show_help)
 
         self.addActions([self.new_note_action, self.open_note_action, self.save_note_action, self.save_as_note_action, self.help_action])
@@ -175,7 +178,7 @@ class MainWindow(QMainWindow):
             "Ctrl+O: Open Note\n"
             "Ctrl+S: Save Note\n"
             "Ctrl+Shift+S: Save Note As\n"
-            "Ctrl+H: Show Help\n\n"
+            f"{self.help_shortcut}: Show Help\n\n"
             "Use the buttons in the top bar to toggle themes."
         )
         QMessageBox.information(self, "Help", help_text)
